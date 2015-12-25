@@ -1,112 +1,256 @@
+//
+// Config
+//
 
-SET _stageCount TO 2.
-SET beginOrbitManuever TO FALSE.
+SET countDownTimer TO 10.
+SET stageCount TO 2.
+
+SET departureAngleVelocity TO 100.
+SET departureAngle TO (UP + R(20,0,0)).
+
+SET lowerAtmosphereSpeedMin TO 155.
+SET lowerAtmosphereSpeedMax TO 160.
+SET highAltitudeBurnTarget TO 10000.
+SET lowerAtmosphereMinThrottle TO 0.1.
+
+SET apoapsisBurnTime TO 10.
+
+SET apoapsisTarget TO 75000.
+SET periapsisTarget TO 80000.
+SET periapsisFullBurn TO 30000.
 
 
-PRINT "LAUNCH in 5...".
+//
+// Private
+//
 
-// 5s countdown
-SET _launchCount TO 5.
-UNTIL (_launchCount = 0) {
-	PRINT _launchCount.
-	SET _launchCount TO _launchCount -1.
-	wait 1.
+SET _beginOrbitManuever TO FALSE.
+SET _minOrbitAltitude TO 70000.
+SET _lowerAtmosphereSpeedMod TO highAltitudeBurnTarget-200.
+
+//
+// CountDownTimer
+//
+
+PRINT "LAUNCH in " + countDownTimer + "...".
+UNTIL (countDownTimer = 0) {
+	PRINT countDownTimer.
+	SET countDownTimer TO (countDownTimer -1).
+	WAIT 1.
 }
+
+// 
+// SETUP
+//
 
 SET SHIP:CONTROL:PILOTMAINTHROTTLE to 1.
 LOCK STEERING TO UP.
 STAGE.
 PRINT "Launch!".
 
-WHEN (STAGE:LIQUIDFUEL < 0.1) THEN {
+//
+// Stage when fuel is low
+//
 
-	PRINT "FUEL STAGE COMPLETE".
-	SET _stageCount TO _stageCount - 1.
-	STAGE.
+WHEN (STAGE:LIQUIDFUEL < 0.1) AND (SHIP:ALTITUDE < apoapsisTarget) THEN {
 
-	if (_stageCount > 0) {
-		PRESERVE.
-	} else {
-		PRINT "Final stage.".
+	LIST ENGINES IN _engines.
+	SET eng TO _engines[ _engines:LENGTH-1 ].
+
+	if(eng:IGNITION = TRUE) {
+
+		PRINT "FUEL STAGE COMPLETE".
+		SET stageCount TO stageCount - 1.
+		STAGE.
+
+		if (stageCount > 0) {
+
+			PRESERVE.
+
+		} else {
+
+			PRINT "Final stage.".
+		}
+
 	}
 
+	PRESERVE.
+
 }
 
-WHEN (SHIP:VELOCITY:SURFACE:Z > 100) THEN {
+//
+//
+//
+
+WHEN (ETA:APOAPSIS > 20) AND (ETA:APOAPSIS < 30) THEN {
+	
+	PRINT "BEGINNING APOAPSIS BURN SEQUENCE".
+
+}
+
+// 
+// Shutdown engine when <= 0.1
+//
+
+WHEN (SHIP:CONTROL:PILOTMAINTHROTTLE <= 0.1) THEN {
+
+	LIST ENGINES IN _engines.
+	SET eng TO _engines[ _engines:LENGTH-1 ].
+
+	if(eng:IGNITION = TRUE) {
+		eng:SHUTDOWN.
+	}
+
+	PRESERVE.
+
+}
+
+// 
+// Activate engine when at 0.1
+//
+
+WHEN (SHIP:CONTROL:PILOTMAINTHROTTLE >= 0.1) THEN {
+	
+	LIST ENGINES IN _engines.
+	SET eng TO _engines[ _engines:LENGTH-1 ].
+
+	if(eng:IGNITION = FALSE) {
+		eng:ACTIVATE.
+	}
+
+	PRESERVE.
+	
+}
+
+//
+// Set departure angle
+//
+
+WHEN (SHIP:VELOCITY:SURFACE:Z >= departureAngleVelocity) THEN {
 
 	PRINT "LOCK ORBITAL DEPARTURE ANGLE".
-	LOCK STEERING TO UP + R(20,0,0).
+	LOCK STEERING TO departureAngle.
 
 }
 
-WHEN (SHIP:ALTITUDE > 10000) THEN {
+//
+// Initiate high altitude burn
+//
+WHEN (SHIP:ALTITUDE >= highAltitudeBurnTarget) THEN {
 
 	PRINT "HIGH ALTITUDE BURN".
 	SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 1.
 
 }
 
-WHEN (APOAPSIS > 75000) THEN {
+//
+// Coast ship until T-30s from apoapsis
+//
+
+WHEN (APOAPSIS >= apoapsisTarget) THEN {
 
 	PRINT "COASTING UNTIL APOAPSIS T-30s".
-	SET beginOrbitManuever TO TRUE.
+	SET _beginOrbitManuever TO TRUE.
 	LOCK STEERING TO PROGRADE.
 
 }
 
+//
+// PROGRAM TERMINUS
+//
+
+WHEN (PERIAPSIS >= periapsisTarget) THEN {
+
+	PRINT "ESTABLISHED ORBIT".
+
+	LIST ENGINES IN _engines.
+	SET eng TO _engines[ _engines:LENGTH-1 ].
+
+	if(eng:IGNITION = TRUE) {
+		eng:SHUTDOWN.
+	}
+
+	SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.01.
+	LOCK STEERING TO PROGRADE.
+
+	UNLOCK STEERING.
+	UNLOCK THROTTLE.
+	
+	// end program
+
+}
+
+
+//
 // Modulate speed in lower atmosphere 
 // target is 300m/s
-UNTIL (SHIP:ALTITUDE > 9800) {
+//
+
+UNTIL (SHIP:ALTITUDE >= _lowerAtmosphereSpeedMod) {
 	
-	if (SHIP:CONTROL:PILOTMAINTHROTTLE < 1) AND (SHIP:VELOCITY:SURFACE:Z < 160) {
+	if (SHIP:CONTROL:PILOTMAINTHROTTLE > lowerAtmosphereMinThrottle) {
 
-		PRINT "MODULATE SPEED UP".
-		SET SHIP:CONTROL:PILOTMAINTHROTTLE TO (SHIP:CONTROL:PILOTMAINTHROTTLE + 0.01).
+		if (SHIP:CONTROL:PILOTMAINTHROTTLE < 1) AND (SHIP:VELOCITY:SURFACE:Z <= lowerAtmosphereSpeedMin) {
 
-	} else if (SHIP:CONTROL:PILOTMAINTHROTTLE > 0) AND (SHIP:VELOCITY:SURFACE:Z > 165) {
+			SET SHIP:CONTROL:PILOTMAINTHROTTLE TO (SHIP:CONTROL:PILOTMAINTHROTTLE + 0.01).
 
-		PRINT "MODULATE SPEED DOWN".
-		SET SHIP:CONTROL:PILOTMAINTHROTTLE TO (SHIP:CONTROL:PILOTMAINTHROTTLE - 0.01).
+		} else if (SHIP:CONTROL:PILOTMAINTHROTTLE > 0.01) AND (SHIP:VELOCITY:SURFACE:Z >= lowerAtmosphereSpeedMax) {
+
+			SET SHIP:CONTROL:PILOTMAINTHROTTLE TO (SHIP:CONTROL:PILOTMAINTHROTTLE - 0.01).
+		}
+
+	} else {
+
+		SET SHIP:CONTROL:PILOTMAINTHROTTLE TO lowerAtmosphereMinThrottle.
+
 	}
 
 }
 
+//
 // Modulate speed to achieve orbit
 //
-SET beginFixAoapsis TO FALSE.
-UNTIL (PERIAPSIS > 80000) {
 
-	if (beginOrbitManuever = TRUE) {
+UNTIL (PERIAPSIS >= periapsisTarget) {
 
-		if(PERIAPSIS < 30000) {
+	if (_beginOrbitManuever = TRUE) {
+
+		//
+		// Modulate thrusters to achieve orbit
+		//
+		if(PERIAPSIS < periapsisFullBurn) {
 
 			// ETA is too close!
+			// Adjust APOAPSIS
 			//
-			if(ETA:APOAPSIS < 20) {
+			if(ETA:APOAPSIS <= 20) {
 
-				PRINT "APOAPSIS too close, adjusting...".
 				LOCK STEERING TO UP.
 				SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 1.
 
+			//
 			// Modulate thrusters to achieve orbit
+			//
 			} else {
 
-				if (SHIP:CONTROL:PILOTMAINTHROTTLE < 1) AND (ETA:APOAPSIS < 30) {
+				if (SHIP:CONTROL:PILOTMAINTHROTTLE < 1) AND (ETA:APOAPSIS <= 30) {
 
-					PRINT "APOAPSIS BURN".
 					LOCK STEERING TO PROGRADE.
 					SET SHIP:CONTROL:PILOTMAINTHROTTLE TO (SHIP:CONTROL:PILOTMAINTHROTTLE + 0.01).
 
-				} else if (SHIP:CONTROL:PILOTMAINTHROTTLE > 0) AND (ETA:APOAPSIS > 40) {
+				} else if (SHIP:CONTROL:PILOTMAINTHROTTLE > 0.01) AND (ETA:APOAPSIS >= 30+apoapsisBurnTime) {
 
 					SET SHIP:CONTROL:PILOTMAINTHROTTLE TO (SHIP:CONTROL:PILOTMAINTHROTTLE - 0.01).
 				}
 
 			}
 
-		} else {
+		//
+		// PERIAPSIS full burn
+		//
+		} else if (PERIAPSIS < periapsisTarget) AND (SHIP:CONTROL:PILOTMAINTHROTTLE < 1) {
 
-			PRINT "PERIAPSIS BURN".
+			LOCK STEERING TO PROGRADE.
 			SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 1.
 
 		}
@@ -114,12 +258,3 @@ UNTIL (PERIAPSIS > 80000) {
 	}
 
 }
-
-WAIT UNTIL (PERIAPSIS > 70000).
-PRINT "ESTABLISHED ORBIT".
-
-WAIT UNTIL (PERIAPSIS > 80000).
-SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.
-UNLOCK STEERING.
-UNLOCK THROTTLE.
-// end program
