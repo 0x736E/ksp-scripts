@@ -1,0 +1,90 @@
+//
+// Parts
+//
+
+FUNCTION vesselPartsNameContains {
+	
+	PARAMETER vessel.
+	PARAMETER type.
+
+	LOCAL out TO LIST().
+
+	FOR part IN vessel:PARTS {
+
+		IF ( part:NAME:CONTAINS(type) ) {
+			out:ADD(part).
+		}
+
+	}
+
+	RETURN out.
+
+}
+
+//
+// Total ISP
+//
+
+FUNCTION vesselAverageISP {
+	
+	PARAMETER vessel.
+
+	LOCAL engines TO vesselPartsNameContains( vessel, "ENGINE" ).
+	LOCAL isp TO 0.
+
+	FOR eng IN engines {
+
+		SET isp TO (isp + eng:VACUUMISP).
+
+	}
+
+	RETURN (isp / engines:LENGTH).
+
+}
+
+//
+// Exhaust velocity for VESSEL
+//
+
+FUNCTION vesselExhaustVelocity {
+	
+	PARAMETER vessel.
+
+	LOCAL isp TO vesselAverageISP(vessel).
+
+	RETURN (9.81 * isp).
+
+}
+
+
+//
+// Delta-V for Vessel
+//
+
+FUNCTION vesselTotalDeltaV {
+	
+	PARAMETER vessel.
+
+	LOCAL Nl TO LN(vessel:WETMASS / vessel:DRYMASS).
+	LOCAL Ve TO vesselExhaustVelocity( vessel ).
+
+	RETURN (Ve * Nl).
+
+}
+
+//
+// Delta-V for Vessel
+//
+
+FUNCTION vesselCurrentDeltaV {
+	
+	PARAMETER vessel.
+
+	LOCAL Nl TO LN(vessel:MASS / vessel:DRYMASS).
+	LOCAL Ve TO vesselExhaustVelocity( vessel ).
+
+	RETURN (Ve * Nl).
+
+}
+
+
