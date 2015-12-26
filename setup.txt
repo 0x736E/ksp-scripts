@@ -1,0 +1,36 @@
+
+//
+// SETUP
+//
+
+DECLARE GLOBAL _libraries TO LIST().
+
+DECLARE GLOBAL thrust TO 1.
+DECLARE GLOBAL steer TO UP.
+
+LOCK THROTTLE to thrust.
+LOCK STEERING to steer.
+
+// 
+// LOAD LIBS
+//
+
+DECLARE FUNCTION import {
+	
+	PARAMETER file.
+	PARAMETER volume.
+
+	FOR lib IN _libraries {
+
+		if(lib = file) {
+			return.
+		}
+
+	}
+
+	PRINT "> IMPORTED '" + file + "'".
+
+	_libraries:ADD(file).
+	COPY file FROM VOLUME.
+
+}

@@ -1,0 +1,79 @@
+
+//
+// Modulate speed to achieve target velocity
+//
+
+DECLARE FUNCTION endThrustModulation {
+	SET _stopThrustModulation TO TRUE.
+	PRINT "[ Thrust Modulation ] END".
+}
+
+DECLARE FUNCTION setMinimumThrustVelocity {
+	PARAMETER minVelocity.
+	SET _minimumThrustModulationVelocity TO minVelocity.
+	PRINT "[ Thrust Modulation ] Velocity minimum set to " + minVelocity.
+}
+
+DECLARE FUNCTION beginThrustModulation {
+
+	PRINT "[ Thrust Modulation ] BEGIN".
+
+	PARAMETER targetVelocity.
+
+	DECLARE GLOBAL _minimumThrustModulationVelocity TO 0.
+	DECLARE GLOBAL _stopThrustModulation TO FALSE.
+
+	LOCAL thrustBeganTimestamp TO 0.
+	LOCAL thrustTimeUntilVelocity TO 0.
+
+	LOCAL beginThrust TO FALSE.
+	LOCAL timeSinceLastBurn TO 0.
+
+	UNTIL (_stopThrustModulation = TRUE) {
+
+		if (timeSinceLastBurn <= thrustTimeUntilVelocity) AND (targetVelocity > 0) {
+
+			if (throttle < 1) AND (SHIP:VELOCITY:SURFACE:MAG < targetVelocity) {
+
+				SET thrust TO 1.
+
+				if (beginThrust = FALSE) {
+
+					SET beginThrust TO TRUE.
+					SET thrustBeganTimestamp TO TIME.
+
+				} else {
+
+					SET now TO TIME.
+					SET timeSinceLastBurn TO (now - thrustBeganTimestamp).
+
+				}
+
+			} else if (throttle > _minimumThrustModulationVelocity) AND (SHIP:VELOCITY:SURFACE:MAG > targetVelocity) {
+
+				//
+				// Calculate how long it took to accellerate to target speed
+				//
+				
+				if (beginThrust) {
+					
+					SET now to TIME.
+					SET timeDelta TO (now - thrustBeganTimestamp).
+					SET thrustTimeUntilVelocity TO timeDelta:SECONDS.
+					SET thrustBeganTimestamp to now.
+					SET beginThrust TO FALSE.
+
+				}
+
+				SET thrust TO _minimumThrustModulationVelocity.
+
+			}
+
+		}
+
+	}
+
+	SET thrust TO 1.
+
+}
+

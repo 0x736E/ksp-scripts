@@ -1,0 +1,37 @@
+// 
+// LOAD LIBS
+//
+
+import( "thrustModulation.txt", "archive" ).
+RUN ONCE thrustModulation.txt.
+
+//
+// Escape trajectory
+//
+
+DECLARE FUNCTION escapeTrajectory {
+
+	PRINT "[ Escape Trajectory ] INITIALIZED".
+
+	WHEN (ALT:RADAR > 10000) THEN {
+
+		setMinimumThrustVelocity(0.1).
+		SET steer TO (UP + R(22,0,0)).
+
+	}
+
+	WHEN (ALT:RADAR > 10100) THEN {
+
+		setMinimumThrustVelocity(0).
+		PRINT "[ Escape Trajectory ] ESTABLISHED".
+
+	}
+
+	WHEN (ALT:RADAR > 14000) THEN {
+		endThrustModulation().
+	}
+
+	WAIT UNTIL (ALT:RADAR < 14000) AND (SHIP:VELOCITY:SURFACE:MAG > 300).
+		beginThrustModulation(300).
+
+}
