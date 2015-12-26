@@ -1,0 +1,130 @@
+
+SET thrust TO 1.
+SET steer TO UP.
+
+LOCK THROTTLE to thrust.
+LOCK STEERING to steer.
+
+SET targetThrust TO 300.
+SET maxThrust TO 99999.
+
+
+
+
+//
+// Escape trajectory
+//
+
+WHEN (ALT:RADAR > 10000) THEN {
+	
+	PRINT "Steering to escape trajectory".
+
+	setMinimumThrustVelocity(0.1).
+	SET steer TO (UP + R(22,0,0)).
+
+}
+
+WHEN (ALT:RADAR > 10100) THEN {
+	setMinimumThrustVelocity(0).
+}
+
+SET T TO TIME.
+WHEN (ALT:RADAR > 25000) THEN {
+	
+	PRINT ">> FUEL @ 25KM = " + SHIP:LIQUIDFUEL.
+
+	SET now TO TIME.
+	SET now TO now - T.
+	PRINT ">> TIME @ 25KM = " + now.
+
+}
+
+//
+// Modulate speed to achieve target
+//
+DECLARE FUNCTION endThrustModulation {
+	SET _stopThrustModulation TO FALSE.
+}
+
+DECLARE FUNCTION setMinimumThrustVelocity {
+	PARAMETER minVelocity.
+	SET _minimumThrustVelocity TO minVelocity.
+	PRINT "Set minimum thrust to " + minVelocity.
+}
+
+DECLARE FUNCTION beginThrustModulation {
+
+	PARAMETER targetVelocity.
+
+	DECLARE GLOBAL _minimumThrustVelocity TO 0.
+	DECLARE GLOBAL _stopThrustModulation TO FALSE.
+
+	DECLARE LOCAL accelTimestamp TO 0.
+	DECLARE LOCAL timeToAccel TO 0.
+	DECLARE LOCAL beginThrust TO FALSE.
+
+	UNTIL _stopThrustModulation {
+
+		if (targetVelocity > 0) {
+
+			if (throttle < 1) AND (SHIP:VELOCITY:SURFACE:MAG < targetVelocity) {
+
+				SET thrust TO 1.
+
+				if (beginThrust = FALSE) {
+
+					SET beginThrust TO TRUE.
+					SET accelTimestamp TO TIME.
+
+				} else {
+
+					WAIT timeToAccel.
+				}
+
+			} else if (throttle > _minimumThrustVelocity) AND (SHIP:VELOCITY:SURFACE:MAG > targetVelocity) {
+
+				//
+				// Calculate how long it took to accellerate to target speed
+				//
+				
+				if (beginThrust) {
+					
+					SET now to TIME.
+					SET timeDelta TO (now - accelTimestamp).
+					SET timeToAccel TO timeDelta:SECONDS.
+					SET accelTimestamp to now.
+					SET beginThrust TO FALSE.
+
+				}
+
+				SET thrust TO _minimumThrustVelocity.
+
+			}
+
+		}
+
+	}
+
+}
+
+//
+
+
+
+// START
+STAGE.
+PRINT "LAUNCH".
+
+
+WAIT UNTIL (ALT:RADAR < 14000) AND (SHIP:VELOCITY:SURFACE:MAG > 300).
+	PRINT "Begin thrust modulation".
+	beginThrustModulation(300).
+
+
+WAIT UNTIL (ALT:RADAR > 14000).
+	PRINT "End thrust modulation".
+	endThrustModulation().
+
+
+WAIT UNTIL (ALT:RADAR > 70000).
+	PRINT "Complete.".
