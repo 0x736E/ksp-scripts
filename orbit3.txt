@@ -1,0 +1,19 @@
+// 
+// LOAD LIBS
+//
+
+COPY setup.txt FROM archive.
+RUN ONCE setup.txt.
+
+import( "escapeTrajectory.txt", "archive" ).
+RUN ONCE escapeTrajectory.txt.
+
+//
+// START
+//
+
+PRINT "LAUNCH".
+STAGE.
+escapeTrajectory().
+
+WAIT UNTIL (ALT:RADAR > 60000).
