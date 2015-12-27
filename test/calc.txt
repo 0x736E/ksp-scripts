@@ -1,0 +1,64 @@
+//
+// TEST
+//
+
+SET testVessel TO SHIP.
+SET testAltitude TO SHIP:ALTITUDE.
+SET testBody TO Kerbin.
+set testScaleHeight TO 5000.
+SET testAltitude TO SHIP:ALTITUDE.
+
+///
+///
+
+SET sH TO bodyScaleHeight(testBody).
+print "bodyScaleHeight: " + sH.
+
+SET engines TO vesselPartsNameContains(testVessel, "ENGINE").
+print "vesselPartsNameContains: " + engines.
+
+SET avgISP TO vesselAverageISP(testVessel).
+print "vesselAverageISP: " + avgISP.
+
+SET eV TO vesselExhaustVelocity(testVessel).
+print "vesselExhaustVelocity: " + ev.
+
+SET engineEv TO engineExhaustVelocity(engines[0]).
+print "engineExhaustVelocity: " + engineEv.
+
+SET totalVesselDeltaV TO vesselTotalDeltaV(testVessel).
+print "vesselTotalDeltaV: " + totalVesselDeltaV.
+
+SET currentVesselDeltaV TO vesselCurrentDeltaV(testVessel).
+print "currentVesselDeltaV: " + currentVesselDeltaV.
+
+SET P TO atmospherePressure(testBody:ATM:SEALEVELPRESSURE, testScaleHeight, testAltitude).
+print "atmospherePressure: " + P.
+
+SET bodyPressure TO bodyAtmospherePressure(testBody, testAltitude).
+print "bodyAtmospherePressure: " + bodyPressure.
+
+SET vesselPressure TO vesselAtmospherePressure(testVessel, testBody).
+print "vesselAtmospherePressure: " + vesselPressure.
+
+SET atmDensity TO atmosphereDensity(P).
+print "atmosphereDensity: " + atmDensity.
+
+SET bodyAtmDensity TO bodyAtmosphereDensity(testBody, testAltitude).
+print "bodyAtmosphereDensity: " + bodyAtmDensity.
+
+SET vesselAtmD TO vesselAtmosphereDensity(testVessel, testBody).
+print "vesselAtmosphereDensity: " + vesselAtmD.
+
+SET vesselDistanceFromCenter TO vesselDistanceFromCenterOfBody(testVessel, testBody).
+print "vesselDistanceFromCenter: " + vesselDistanceFromCenter.
+
+SET altitudeDistanceFromCenter TO distanceFromCenterOfBodyAtAltitude(testAltitude, testBody).
+print "altitudeDistanceFromCenter: " + altitudeDistanceFromCenter.
+
+SET vesselFg to vesselGravityForce(testVessel, testBody).
+print "vesselGravityForce: " + vesselFg.
+
+SET atmFg to altitudeGravityForce(testAltitude, testBody).
+print "altitudeGravityForce: " + atmFg.
+
