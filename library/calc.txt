@@ -1,5 +1,45 @@
 //
-// Parts
+// CONSTANTS
+//
+
+// Atmosphere to Pressure conversion
+SET ElembisNumber TO 1.2230948554874.
+
+// since 1.0 KOS doesn't provide VESSEL:SCALEHEIGHT
+SET ScaleHeight TO LIST().
+	ScaleHeight:ADD( LIST(	"Jool", 	10000	) ).
+	ScaleHeight:ADD( LIST(	"Eve", 		7000	) ).
+	ScaleHeight:ADD( LIST(	"Kerbin", 	5000	) ).
+	ScaleHeight:ADD( LIST(	"Laythe", 	4000	) ).
+	ScaleHeight:ADD( LIST(	"Duna", 	3000	) ).
+
+//SET KerbinAirMolecularMass TO 28.9644.
+//SET DragMultiplier TO 0.008.
+
+//
+// Scale height for BODY
+//
+
+FUNCTION bodyScaleHeight {
+	
+	PARAMETER body.
+
+	FOR scale in ScaleHeight {
+
+		if (scale[0] = body:NAME) {
+			RETURN scale[1].
+		}
+
+	}
+
+	PRINT "Error: Scale Height unavailable for " + body:NAME.
+	RETURN 0.
+
+}
+
+
+//
+// Parts from VESSEL which have names containing TYPE
 //
 
 FUNCTION vesselPartsNameContains {
@@ -22,7 +62,7 @@ FUNCTION vesselPartsNameContains {
 }
 
 //
-// Total ISP
+// Average ISP for VESSEL
 //
 
 FUNCTION vesselAverageISP {
@@ -56,9 +96,23 @@ FUNCTION vesselExhaustVelocity {
 
 }
 
+//
+// Exhaust velocity for ENGINE
+//
+
+FUNCTION engineExhaustVelocity {
+	
+	PARAMETER engine.
+
+	LOCAL isp TO engine:VACUUMISP.
+
+	RETURN (9.81 * isp).
+
+}
+
 
 //
-// Delta-V for Vessel
+// Delta-V for VESSEL
 //
 
 FUNCTION vesselTotalDeltaV {
@@ -73,7 +127,7 @@ FUNCTION vesselTotalDeltaV {
 }
 
 //
-// Delta-V for Vessel
+// Delta-V for VESSEL
 //
 
 FUNCTION vesselCurrentDeltaV {
@@ -87,4 +141,191 @@ FUNCTION vesselCurrentDeltaV {
 
 }
 
+//
+// Atmospheric pressure at ALTITUDE
+//
 
+FUNCTION atmospherePressure {
+	
+	PARAMETER seaLevelPressure.
+	PARAMETER scaleHeight.
+	PARAMETER altitude.
+
+	SET P TO (seaLevelPressure * ( CONSTANT:E ^(0-altitude/scaleHeight) )).
+
+	RETURN P.
+
+}
+
+//
+// Atmospheric pressure for BODY at ALTITUDE
+//
+
+FUNCTION bodyAtmospherePressure {
+	
+	PARAMETER body.
+	PARAMETER altitude.
+
+	IF ( body:ATM:EXISTS = FALSE ) {
+		RETURN 0.
+	}
+
+	LOCAL scaleH TO bodyScaleHeight(body).
+
+	SET P to atmospherePressure(body:ATM:SEALEVELPRESSURE, scaleH, altitude).
+
+	RETURN P.
+
+}
+
+//
+// Atmospheric pressure for VESSEL in BODY
+//
+
+FUNCTION vesselAtmospherePressure {
+	
+	PARAMETER vessel.
+	PARAMETER body.
+
+	IF ( body:ATM:EXISTS = FALSE ) {
+		RETURN 0.
+	}
+
+	LOCAL scaleH TO bodyScaleHeight(body).
+
+	SET P to atmospherePressure(body:ATM:SEALEVELPRESSURE, scaleH, vessel:ALTITUDE).
+
+	RETURN P.
+
+}
+
+
+//
+// Atmospheric density for AtmospherePressure
+//
+
+FUNCTION atmosphereDensity {
+	
+	PARAMETER pressure.
+
+	SET density TO (pressure * ElembisNumber).
+
+	RETURN density.
+
+}
+
+//
+// Atmospheric density for BODY at ALTITUDE
+//
+
+FUNCTION bodyAtmosphereDensity {
+	
+	PARAMETER body.
+	PARAMETER altitude.
+
+	IF ( body:ATM:EXISTS = FALSE ) {
+		RETURN 0.
+	}
+
+	SET atm TO bodyAtmospherePressure(body, altitude).
+	SET density TO atmosphereDensity(atm).
+
+	RETURN density.
+
+}
+
+//
+// Atmospheric density surrounding VESSEL in BODY
+//
+
+FUNCTION vesselAtmosphereDensity {
+	
+	PARAMETER vessel.
+	PARAMETER body.
+
+	IF ( body:ATM:EXISTS = FALSE ) {
+		RETURN 0.
+	}
+
+	SET atm TO bodyAtmospherePressure(body, vessel:ALTITUDE).
+	SET density TO atmosphereDensity(atm).
+
+	RETURN density.
+
+}
+
+//
+// Distance from center of BODY
+//
+
+FUNCTION vesselDistanceFromCenterOfBody {
+	
+	PARAMETER vessel.
+	PARAMETER body.
+
+	SET center TO (body:RADIUS + vessel:ALTITUDE).
+
+	RETURN center.
+
+}
+
+//
+// Distance from center of BODY at ALTITUDE
+//
+
+FUNCTION distanceFromCenterOfBodyAtAltitude {
+	
+	PARAMETER alt.
+	PARAMETER body.
+
+	SET center TO (body:RADIUS + alt).
+
+	RETURN center.
+
+}
+
+//
+// Force of gravity for VESSEL in BODY
+//
+
+FUNCTION vesselGravityForce {
+	
+	PARAMETER vessel.
+	PARAMETER body.
+
+	SET r TO vesselDistanceFromCenterOfBody(vessel, body).
+	SET Fg TO ((CONSTANT:G * body:MASS) / r^2).
+
+	RETURN Fg.
+
+}
+
+//
+// Force of gravity at ALTITUDE in BODY
+//
+
+FUNCTION altitudeGravityForce {
+	
+	PARAMETER alt.
+	PARAMETER body.
+
+	SET r TO distanceFromCenterOfBodyAtAltitude(alt, body).
+	SET Fg TO ((CONSTANT:G * body:MASS) / r^2).
+
+	RETURN Fg.
+
+}
+
+//
+// Atmospheric drag for VESSEL in BODY
+//
+
+FUNCTION partAtmosphereDrag {
+	
+	PARAMETER part.
+
+	SET Fd TO 0.
+
+	RETURN Fd.
+
+}
